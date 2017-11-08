@@ -7,54 +7,43 @@ import twilio.twiml
 ACCOUNT_SID = 'AC***'
 API_KEY = 'SK***'
 API_KEY_SECRET = '***'
-PUSH_CREDENTIAL_SID = 'CR***'
-APP_SID = 'AP***'
-
-# IDENTITY = 'voice_test'
-IDENTITY = 'agent_1138749212'
-CALLER_ID = '+353768889047'
+ANDROID_PUSH_CREDENTIAL_SID = 'CR***'
+IOS_PUSH_CREDENTIAL_SID = 'CR***'
 
 app = Flask(__name__)
 
-@app.route('/accessToken')
+# Example: /token?user=39802&platform=android
+# Example: /token?user=39802&platform=ios
+@app.route('/token')
 def token():
+  user_id = request.args.get('user')
+  
+  if not user_id:
+    return "Invalid user"
+
+  platform = request.args.get('platform')
+
+  if not platform:
+    return "Invalid platform"
+
   account_sid = os.environ.get("ACCOUNT_SID", ACCOUNT_SID)
   api_key = os.environ.get("API_KEY", API_KEY)
   api_key_secret = os.environ.get("API_KEY_SECRET", API_KEY_SECRET)
-  push_credential_sid = os.environ.get("PUSH_CREDENTIAL_SID", PUSH_CREDENTIAL_SID)
-  app_sid = os.environ.get("APP_SID", APP_SID)
+  user_identity = 'agent_' + user_id
+  
+  if platform == 'android':
+    push_credential = os.environ.get("ANDROID_PUSH_CREDENTIAL_SID", ANDROID_PUSH_CREDENTIAL_SID)
+  else:
+    push_credential = os.environ.get("IOS_PUSH_CREDENTIAL_SID", IOS_PUSH_CREDENTIAL_SID)
 
   grant = VoiceGrant(
-    push_credential_sid=push_credential_sid,
-    outgoing_application_sid=app_sid
+    push_credential_sid=push_credential
   )
 
-  token = AccessToken(account_sid, api_key, api_key_secret, IDENTITY)
+  token = AccessToken(account_sid, api_key, api_key_secret, user_identity)
   token.add_grant(grant)
 
   return str(token)
-
-@app.route('/outgoing', methods=['GET', 'POST'])
-def outgoing():
-  resp = twilio.twiml.Response()
-  resp.say("Congratulations! You have made your first oubound call! Good bye.")
-  return str(resp)
-
-@app.route('/incoming', methods=['GET', 'POST'])
-def incoming():
-  resp = twilio.twiml.Response()
-  resp.say("Congratulations! You have received your first inbound call! Good bye.")
-  return str(resp)
-
-@app.route('/placeCall', methods=['GET', 'POST'])
-def placeCall():
-  account_sid = os.environ.get("ACCOUNT_SID", ACCOUNT_SID)
-  api_key = os.environ.get("API_KEY", API_KEY)
-  api_key_secret = os.environ.get("API_KEY_SECRET", API_KEY_SECRET)
-
-  client = Client(api_key, api_key_secret, account_sid)
-  call = client.calls.create(url=request.url_root + 'incoming', to='client:' + IDENTITY, from_='client:' + CALLER_ID)
-  return str(call.sid)
 
 @app.route('/', methods=['GET', 'POST'])
 def welcome():
